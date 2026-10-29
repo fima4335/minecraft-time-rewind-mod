@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +24,9 @@ public class TimeRewindMod implements ModInitializer {
 				.then(CommandManager.literal("save")
 					.executes(ctx -> {
 						ServerCommandSource source = ctx.getSource();
-						if (source.getPlayer() != null) {
-							TimeVersionManager.save(source.getPlayer(), "auto_" + System.currentTimeMillis());
+						ServerPlayerEntity player = source.getPlayer();
+						if (player != null) {
+							TimeVersionManager.save(player, "auto_" + System.currentTimeMillis());
 							source.sendFeedback(() -> Text.literal("§aВерсия сохранена!"), false);
 						}
 						return 1;
@@ -32,9 +34,10 @@ public class TimeRewindMod implements ModInitializer {
 					.then(CommandManager.argument("name", StringArgumentType.greedyString())
 						.executes(ctx -> {
 							ServerCommandSource source = ctx.getSource();
-							if (source.getPlayer() != null) {
+							ServerPlayerEntity player = source.getPlayer();
+							if (player != null) {
 								String name = StringArgumentType.getString(ctx, "name");
-								TimeVersionManager.save(source.getPlayer(), name);
+								TimeVersionManager.save(player, name);
 								source.sendFeedback(() -> Text.literal("§aВерсия '" + name + "' сохранена!"), false);
 							}
 							return 1;
@@ -44,8 +47,9 @@ public class TimeRewindMod implements ModInitializer {
 				.then(CommandManager.literal("list")
 					.executes(ctx -> {
 						ServerCommandSource source = ctx.getSource();
-						if (source.getPlayer() != null) {
-							var list = TimeVersionManager.list(source.getPlayer());
+						ServerPlayerEntity player = source.getPlayer();
+						if (player != null) {
+							var list = TimeVersionManager.list(player.getServer());
 							if (list.isEmpty()) {
 								source.sendFeedback(() -> Text.literal("§eНет сохранённых версий."), false);
 							} else {
@@ -63,10 +67,11 @@ public class TimeRewindMod implements ModInitializer {
 					.then(CommandManager.argument("id", StringArgumentType.word())
 						.executes(ctx -> {
 							ServerCommandSource source = ctx.getSource();
-							if (source.getPlayer() != null) {
+							ServerPlayerEntity player = source.getPlayer();
+							if (player != null) {
 								try {
 									int id = Integer.parseInt(StringArgumentType.getString(ctx, "id"));
-									if (TimeVersionManager.load(source.getPlayer(), id)) {
+									if (TimeVersionManager.load(player, id)) {
 										source.sendFeedback(() -> Text.literal("§aВерсия загружена!"), false);
 									} else {
 										source.sendFeedback(() -> Text.literal("§cВерсия не найдена."), false);
