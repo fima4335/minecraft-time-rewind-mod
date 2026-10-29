@@ -1,15 +1,16 @@
 package com.fima.timerewind;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtSizeTracker;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,11 +20,9 @@ import java.util.List;
 public class TimeVersionManager {
 	private static final String FOLDER = "time_versions";
 
-	public static Path getVersionsDir(PlayerEntity player) {
-		if (!(player.getWorld() instanceof ServerWorld serverWorld)) {
-			return null;
-		}
-		Path worldRoot = serverWorld.getServer().getSavePath(WorldSavePath.ROOT);
+	public static Path getVersionsDir(MinecraftServer server) {
+		if (server == null) return null;
+		Path worldRoot = server.getSavePath(WorldSavePath.ROOT);
 		Path dir = worldRoot.resolve(FOLDER);
 		try {
 			Files.createDirectories(dir);
@@ -33,8 +32,9 @@ public class TimeVersionManager {
 		return dir;
 	}
 
-	public static void save(PlayerEntity player, String name) {
-		Path dir = getVersionsDir(player);
+	public static void save(ServerPlayerEntity player, String name) {
+		MinecraftServer server = player.getServer();
+		Path dir = getVersionsDir(server);
 		if (dir == null) return;
 
 		TimeVersion v = new TimeVersion(name);
@@ -46,33 +46,33 @@ public class TimeVersionManager {
 		v.health = player.getHealth();
 		v.foodLevel = player.getHungerManager().getFoodLevel();
 		v.saturation = player.getHungerManager().getSaturationLevel();
-		v.worldTime = player.getWorld().getTimeOfDay();
+		v.worldTime = player.getServerWorld().getTimeOfDay();
 
-		// Inventory snapshot (simple list of item stacks NBT)
+		RegistryWrapper.WrapperLookup registries = server.getRegistryManager();
 		NbtList inv = new NbtList();
 		for (int i = 0; i < player.getInventory().size(); i++) {
-			var stack = player.getInventory().getStack(i);
+			ItemStack stack = player.getInventory().getStack(i);
 			if (!stack.isEmpty()) {
 				NbtCompound itemNbt = new NbtCompound();
 				itemNbt.putInt("Slot", i);
-				stack.writeNbt(itemNbt);
+				itemNbt.put("Item", stack.encode(registries));
 				inv.add(itemNbt);
 			}
 		}
 		v.inventory = inv;
 
-		File file = dir.resolve(sanitize(name) + "_" + v.timestamp + ".dat").toFile();
+		Path file = dir.resolve(sanitize(name) + "_" + v.timestamp + ".dat");
 		try {
-			NbtIo.writeCompressed(v.toNbt(), file.toPath());
-			TimeRewindMod.LOGGER.info("Saved time version: {}", file.getName());
+			NbtIo.writeCompressed(v.toNbt(), file);
+			TimeRewindMod.LOGGER.info("Saved time version: {}", file.getFileName());
 		} catch (IOException e) {
 			TimeRewindMod.LOGGER.error("Failed to save time version", e);
 		}
 	}
 
-	public static List<TimeVersion> list(PlayerEntity player) {
+	public static List<TimeVersion> list(MinecraftServer server) {
 		List<TimeVersion> result = new ArrayList<>();
-		Path dir = getVersionsDir(player);
+		Path dir = getVersionsDir(server);
 		if (dir == null || !Files.exists(dir)) return result;
 
 		try (var stream = Files.list(dir)) {
@@ -92,34 +92,35 @@ public class TimeVersionManager {
 		return result;
 	}
 
-	public static boolean load(PlayerEntity player, int index) {
-		List<TimeVersion> versions = list(player);
+	public static boolean load(ServerPlayerEntity player, int index) {
+		MinecraftServer server = player.getServer();
+		List<TimeVersion> versions = list(server);
 		if (index < 0 || index >= versions.size()) return false;
 
 		TimeVersion v = versions.get(index);
+		RegistryWrapper.WrapperLookup registries = server.getRegistryManager();
 
-		if (player instanceof ServerPlayerEntity serverPlayer) {
-			serverPlayer.requestTeleport(v.x, v.y, v.z);
-			serverPlayer.setYaw(v.yaw);
-			serverPlayer.setPitch(v.pitch);
-			serverPlayer.setHealth(v.health);
-			serverPlayer.getHungerManager().setFoodLevel(v.foodLevel);
-			serverPlayer.getHungerManager().setSaturationLevel(v.saturation);
+		player.requestTeleport(v.x, v.y, v.z);
+		player.setYaw(v.yaw);
+		player.setPitch(v.pitch);
+		player.setHealth(v.health);
+		player.getHungerManager().setFoodLevel(v.foodLevel);
+		player.getHungerManager().setSaturationLevel(v.saturation);
 
-			// Restore world time
-			if (serverPlayer.getServerWorld() != null) {
-				serverPlayer.getServerWorld().setTimeOfDay(v.worldTime);
-			}
+		ServerWorld world = player.getServerWorld();
+		if (world != null) {
+			world.setTimeOfDay(v.worldTime);
+		}
 
-			// Restore inventory (clear first)
-			serverPlayer.getInventory().clear();
-			if (v.inventory != null) {
-				for (int i = 0; i < v.inventory.size(); i++) {
-					NbtCompound itemNbt = v.inventory.getCompound(i);
-					int slot = itemNbt.getInt("Slot");
-					var stack = net.minecraft.item.ItemStack.fromNbt(serverPlayer.getRegistryManager(), itemNbt).orElse(net.minecraft.item.ItemStack.EMPTY);
-					if (slot >= 0 && slot < serverPlayer.getInventory().size()) {
-						serverPlayer.getInventory().setStack(slot, stack);
+		player.getInventory().clear();
+		if (v.inventory != null) {
+			for (int i = 0; i < v.inventory.size(); i++) {
+				NbtCompound itemNbt = v.inventory.getCompound(i);
+				int slot = itemNbt.getInt("Slot");
+				if (itemNbt.contains("Item")) {
+					ItemStack stack = ItemStack.fromNbt(registries, itemNbt.getCompound("Item")).orElse(ItemStack.EMPTY);
+					if (slot >= 0 && slot < player.getInventory().size()) {
+						player.getInventory().setStack(slot, stack);
 					}
 				}
 			}
@@ -128,6 +129,7 @@ public class TimeVersionManager {
 	}
 
 	private static String sanitize(String name) {
-		return name.replaceAll("[^a-zA-Z0-9_\-а-яА-ЯёЁ]", "_").substring(0, Math.min(name.length(), 32));
+		String s = name.replaceAll("[^a-zA-Z0-9_\\-а-яА-ЯёЁ]", "_");
+		return s.substring(0, Math.min(s.length(), 32));
 	}
 }
