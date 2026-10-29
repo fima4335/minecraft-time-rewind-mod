@@ -2,17 +2,21 @@ package com.fima.timerewind.client;
 
 import com.fima.timerewind.TimeVersion;
 import com.fima.timerewind.TimeVersionManager;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 public class TimeMenuScreen extends Screen {
-	private List<TimeVersion> versions;
+	private List<TimeVersion> versions = new ArrayList<>();
 	private int selectedIndex = -1;
 	private int scrollOffset = 0;
 	private static final int MAX_VISIBLE = 8;
@@ -21,41 +25,46 @@ public class TimeMenuScreen extends Screen {
 		super(Text.literal("Меню времени"));
 	}
 
+	private MinecraftServer getServer() {
+		MinecraftClient c = MinecraftClient.getInstance();
+		return c.getServer();
+	}
+
+	private ServerPlayerEntity getServerPlayer() {
+		MinecraftServer server = getServer();
+		if (server == null || client == null || client.player == null) return null;
+		return server.getPlayerManager().getPlayer(client.player.getUuid());
+	}
+
 	@Override
 	protected void init() {
 		super.init();
-		if (client != null && client.player != null) {
-			versions = TimeVersionManager.list(client.player);
-		} else {
-			versions = List.of();
-		}
+		refreshList();
 
 		int centerX = this.width / 2;
 		int bottomY = this.height - 40;
 
-		// Save button
 		this.addDrawableChild(ButtonWidget.builder(Text.literal("Сохранить версию"), btn -> {
-			if (client != null && client.player != null) {
+			ServerPlayerEntity sp = getServerPlayer();
+			if (sp != null) {
 				String name = "v" + (versions.size() + 1) + "_" + new SimpleDateFormat("HH-mm-ss").format(new Date());
-				TimeVersionManager.save(client.player, name);
-				versions = TimeVersionManager.list(client.player);
+				TimeVersionManager.save(sp, name);
+				refreshList();
 				selectedIndex = versions.size() - 1;
 			}
 		}).dimensions(centerX - 160, bottomY, 100, 20).build());
 
-		// Load button
 		this.addDrawableChild(ButtonWidget.builder(Text.literal("Загрузить"), btn -> {
-			if (selectedIndex >= 0 && client != null && client.player != null) {
-				TimeVersionManager.load(client.player, selectedIndex);
+			ServerPlayerEntity sp = getServerPlayer();
+			if (selectedIndex >= 0 && sp != null) {
+				TimeVersionManager.load(sp, selectedIndex);
 				this.close();
 			}
 		}).dimensions(centerX - 50, bottomY, 100, 20).build());
 
-		// Close
 		this.addDrawableChild(ButtonWidget.builder(Text.literal("Закрыть"), btn -> this.close())
 			.dimensions(centerX + 60, bottomY, 100, 20).build());
 
-		// Rewind buttons
 		this.addDrawableChild(ButtonWidget.builder(Text.literal("◀ Назад"), btn -> {
 			if (versions.isEmpty()) return;
 			if (selectedIndex <= 0) selectedIndex = 0;
@@ -69,6 +78,15 @@ public class TimeMenuScreen extends Screen {
 			else if (selectedIndex < versions.size() - 1) selectedIndex++;
 			ensureVisible();
 		}).dimensions(centerX + 10, bottomY - 30, 100, 20).build());
+	}
+
+	private void refreshList() {
+		MinecraftServer server = getServer();
+		if (server != null) {
+			versions = TimeVersionManager.list(server);
+		} else {
+			versions = new ArrayList<>();
+		}
 	}
 
 	private void ensureVisible() {
@@ -87,7 +105,9 @@ public class TimeMenuScreen extends Screen {
 		int listY = 50;
 		int listX = this.width / 2 - 150;
 
-		if (versions == null || versions.isEmpty()) {
+		if (getServer() == null) {
+			context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Только одиночная игра (integrated server)"), this.width / 2, listY + 40, 0xFF5555);
+		} else if (versions.isEmpty()) {
 			context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Нет сохранённых версий. Нажми «Сохранить»"), this.width / 2, listY + 40, 0xFFAA00);
 		} else {
 			for (int i = 0; i < MAX_VISIBLE; i++) {
@@ -105,7 +125,7 @@ public class TimeMenuScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		if (button == 0 && versions != null) {
+		if (button == 0 && !versions.isEmpty()) {
 			int listY = 50;
 			int listX = this.width / 2 - 150;
 			for (int i = 0; i < MAX_VISIBLE; i++) {
@@ -123,7 +143,7 @@ public class TimeMenuScreen extends Screen {
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		if (versions != null && versions.size() > MAX_VISIBLE) {
+		if (versions.size() > MAX_VISIBLE) {
 			scrollOffset = (int) Math.max(0, Math.min(versions.size() - MAX_VISIBLE, scrollOffset - (int) verticalAmount));
 			return true;
 		}
@@ -132,6 +152,6 @@ public class TimeMenuScreen extends Screen {
 
 	@Override
 	public boolean shouldPause() {
-		return false; // temporary menu, game continues
+		return false;
 	}
 }
