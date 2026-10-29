@@ -1,5 +1,6 @@
 package com.fima.timerewind.client;
 
+import com.fima.timerewind.network.ClientNetwork;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -12,6 +13,8 @@ public class TimeRewindClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		ClientNetwork.register();
+
 		openMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 			"key.timerewind.open_menu",
 			InputUtil.Type.KEYSYM,
