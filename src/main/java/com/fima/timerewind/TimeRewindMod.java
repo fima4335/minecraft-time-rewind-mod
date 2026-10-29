@@ -1,5 +1,6 @@
 package com.fima.timerewind;
 
+import com.fima.timerewind.network.ServerNetwork;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.CommandManager;
@@ -17,28 +18,28 @@ public class TimeRewindMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Time Rewind mod loaded!");
+		LOGGER.info("Time Rewind mod loaded (server + multiplayer support)!");
+		ServerNetwork.register();
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(CommandManager.literal("timeversion")
+				.requires(src -> src.hasPermissionLevel(0))
 				.then(CommandManager.literal("save")
 					.executes(ctx -> {
-						ServerCommandSource source = ctx.getSource();
-						ServerPlayerEntity player = source.getPlayer();
+						ServerPlayerEntity player = ctx.getSource().getPlayer();
 						if (player != null) {
 							TimeVersionManager.save(player, "auto_" + System.currentTimeMillis());
-							source.sendFeedback(() -> Text.literal("§aВерсия сохранена!"), false);
+							ctx.getSource().sendFeedback(() -> Text.literal("§aВерсия сохранена!"), false);
 						}
 						return 1;
 					})
 					.then(CommandManager.argument("name", StringArgumentType.greedyString())
 						.executes(ctx -> {
-							ServerCommandSource source = ctx.getSource();
-							ServerPlayerEntity player = source.getPlayer();
+							ServerPlayerEntity player = ctx.getSource().getPlayer();
 							if (player != null) {
 								String name = StringArgumentType.getString(ctx, "name");
 								TimeVersionManager.save(player, name);
-								source.sendFeedback(() -> Text.literal("§aВерсия '" + name + "' сохранена!"), false);
+								ctx.getSource().sendFeedback(() -> Text.literal("§aВерсия '" + name + "' сохранена!"), false);
 							}
 							return 1;
 						})
@@ -49,7 +50,7 @@ public class TimeRewindMod implements ModInitializer {
 						ServerCommandSource source = ctx.getSource();
 						ServerPlayerEntity player = source.getPlayer();
 						if (player != null) {
-							var list = TimeVersionManager.list(player.getServer());
+							var list = TimeVersionManager.listFor(player);
 							if (list.isEmpty()) {
 								source.sendFeedback(() -> Text.literal("§eНет сохранённых версий."), false);
 							} else {
