@@ -1,2 +1,67 @@
-# minecraft-time-rewind-mod
-Minecraft Fabric mod with temporary time menu for rewinding/forwarding world versions (snapshots). Open one file - build and run.
+# Minecraft Time Rewind Mod
+
+Fabric-мод для Minecraft 1.21.x с **временным меню** (GUI) и системой версий мира.
+
+## Что умеет
+- Клавиша **R** (по умолчанию) открывает временное меню
+- Сохраняет «версии» (снимки): позиция игрока, здоровье, инвентарь, время суток, название
+- Можно перематывать **назад** (старые версии) и **вперёд** (новые)
+- Всё хранится в папке мира `time_versions/`
+- После сборки — **один JAR-файл** в `build/libs/`
+
+> Полноценный rewind всего мира (блоки, мобы, взрывы) — очень тяжёлая задача. Этот мод даёт удобное меню + систему версий состояния игрока и времени. Для полного бэкапа мира используй моды вроде **FastBack** или **Rewind**.
+
+## Требования
+- Minecraft **1.21.1** (или близкая 1.21.x)
+- Fabric Loader **0.16+**
+- Fabric API
+- Java **21**
+
+## Быстрый старт (один файл = всё само)
+
+1. Скачай репозиторий (Code → Download ZIP) или:
+   ```bash
+   git clone https://github.com/fima4335/minecraft-time-rewind-mod.git
+   cd minecraft-time-rewind-mod
+   ```
+2. Собери мод одной командой:
+   ```bash
+   ./gradlew build
+   ```
+   (на Windows: `gradlew.bat build`)
+3. Готовый JAR появится в `build/libs/time-rewind-mod-1.0.0.jar`
+4. Положи JAR в папку `mods` Minecraft + Fabric API
+5. Запусти игру, нажми **R** — откроется меню времени
+
+## Управление
+| Действие              | Клавиша / кнопка     |
+|-----------------------|----------------------|
+| Открыть меню времени  | **R**                |
+| Сохранить текущую версию | Кнопка в меню     |
+| Загрузить выбранную   | Кнопка «Загрузить»   |
+| Перемотать назад/вперёд | Кнопки ◀ ▶         |
+
+## Структура проекта
+```
+src/main/java/com/fima/timerewind/
+  TimeRewindMod.java          — главный класс
+  client/
+    TimeMenuScreen.java       — GUI меню
+    KeyBindings.java          — привязка клавиш
+  TimeVersionManager.java     — сохранение/загрузка версий
+  TimeVersion.java            — данные одной версии
+src/main/resources/
+  fabric.mod.json
+  assets/timerewind/...
+```
+
+## Команды (опционально)
+- `/timeversion save [name]` — сохранить версию
+- `/timeversion load <id>` — загрузить
+- `/timeversion list` — список
+
+## Лицензия
+MIT — делай что хочешь.
+
+---
+Создано автоматически для быстрого старта. При желании можно расширить до полного snapshot чанков.
