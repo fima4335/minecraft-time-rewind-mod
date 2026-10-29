@@ -38,18 +38,20 @@ jobs:
       - name: Create GitHub Release with JAR
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: Time Rewind Mod v1.0.0
+          tag_name: v1.1.0
+          name: Time Rewind Mod v1.1.0 (Multiplayer)
           body: |
-            **Готовый JAR** для Minecraft 1.21.1 + Fabric.
+            **JAR для Minecraft 1.21.1 + Fabric** — работает в одиночной и на сервере.
 
-            1. Скачай `time-rewind-mod-1.0.0.jar` (не sources)
-            2. Положи в папку `mods` вместе с [Fabric API](https://modrinth.com/mod/fabric-api)
-            3. Запусти игру, нажми **R** — меню времени
+            **Установка:**
+            1. Скачай `time-rewind-mod-1.1.0.jar` (не sources)
+            2. Положи в `mods` на **клиенте и на сервере**
+            3. Нужен Fabric API
+            4. Клавиша **R** — меню времени
 
-            Сохраняет позицию, здоровье, инвентарь, время суток. Можно перематывать назад/вперёд по версиям.
-          files: |
-            build/libs/time-rewind-mod-1.0.0.jar
+            Сохраняет позицию, здоровье, инвентарь (у каждого игрока свой список).
+            Время суток меняется только в одиночке или если есть OP.
+          files: build/libs/time-rewind-mod-1.1.0.jar
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
