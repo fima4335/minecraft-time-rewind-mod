@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "timerewind",
+  "version": "${version}",
+  "name": "Time Rewind",
+  "description": "Temporary time menu + version system. Rewind to old versions or go forward to new ones.",
+  "authors": ["fima4335"],
+  "contact": {
+    "sources": "https://github.com/fima4335/minecraft-time-rewind-mod"
+  },
+  "license": "MIT",
+  "icon": "assets/timerewind/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.fima.timerewind.TimeRewindMod"
+    ],
+    "client": [
+      "com.fima.timerewind.client.TimeRewindClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
